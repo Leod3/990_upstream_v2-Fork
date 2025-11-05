@@ -52,9 +52,9 @@
 		gpu_pmu_status_local_pwr_mask = <0x1>; /*0x1 << 0*/
 		gpu_max_clock = <897000>;
 		gpu_max_clock_limit = <897000>;
-		gpu_min_clock = <156000>;
-		gpu_dvfs_start_clock = <260000>;
-		gpu_dvfs_bl_config_clock = <156000>;
+		gpu_min_clock = <377000>;
+		gpu_dvfs_start_clock = <377000>;
+		gpu_dvfs_bl_config_clock = <377000>;
 		gpu_default_voltage = <800000>;
 		gpu_cold_minimum_vol = <0>;
 		gpu_voltage_offset_margin = <37500>;
