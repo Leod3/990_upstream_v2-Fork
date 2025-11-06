@@ -944,7 +944,7 @@
 		bl2-inc = <0>;
 		bl3-inc = <0>;
 		operation-mode = <0>;
-		sibling-cpus = "6-7";
+		sibling-cpus = "7";
 				/* PB  BL  PBL  PWR_THR_INC */
 		config-table = <0x0 0x0 0xff 0x0        /* config A */
 				0x1 0x2 0xff 0x0        /* config B */
@@ -961,7 +961,7 @@
 
 		interrupts = <GIC_SPI INTREQ__CPUCL2_GCUIRQ IRQ_TYPE_LEVEL_HIGH>;
 
-		sibling-cpus = "6-7";
+		sibling-cpus = "7";
 		down-step = <1>;
 
 		max-freq-wo-ocp = <2002000>;
