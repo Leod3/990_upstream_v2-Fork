@@ -242,19 +242,19 @@
 		};
 		cpu6: cpu@0100 {
 			device_type = "cpu";
-			compatible = "arm,lion", "arm,armv8";
+			compatible = "arm,enyo", "arm,armv8";
 			reg = <0x0 0x0100>;
 			enable-method = "psci";
-			cpu-idle-states = <&LION_CPU_SLEEP>;
-			sched-energy-data = <&LION_ENERGY>;
+			cpu-idle-states = <&ENYO_CPU_SLEEP>;
+			sched-energy-data = <&ENYO_ENERGY>;
 			i-cache-size = <0x10000>;	/* 64KB */
-			i-cache-line-size = <128>;
-			i-cache-sets = <128>;
+			i-cache-line-size = <64>;
+			i-cache-sets = <256>;
 			d-cache-size = <0x10000>;	/* 64KB */
 			d-cache-line-size = <64>;
 			d-cache-sets = <256>;
-			next-level-cache = <&L2_LION>;
-			moce-factors = <&LION_FREQ_FACTOR>;
+			next-level-cache = <&L2_ENYO_2>;
+			moce-factors = <&ENYO_FREQ_FACTOR>;
 		};
 		cpu7: cpu@0101 {
 			device_type = "cpu";
@@ -314,6 +314,14 @@
 			next-level-cache = <&L3_DSU>;
 		};
 		L2_ENYO_1: l2-cache@0005 {
+			compatible = "cache";
+			cache-level = <2>;
+			cache-size = <0x40000>;		/* 256KB */
+			cache-line-size = <64>;
+			cache-sets = <512>;
+			next-level-cache = <&L3_DSU>;
+        };
+		L2_ENYO_2: l2-cache@0100 {
 			compatible = "cache";
 			cache-level = <2>;
 			cache-size = <0x40000>;		/* 256KB */
@@ -388,12 +396,12 @@
 				ratio-table = <100>;
 			};
 			ENYO_FREQ_FACTOR: enyo-freq-factor {
-				sibling-cpus = "4-5";
+				sibling-cpus = "4-6";
 				type = <FREQ_FACTOR>;
 				ratio-table = <100>;
 			};
 			LION_FREQ_FACTOR: lion-freq-factor {
-				sibling-cpus = "6-7";
+				sibling-cpus = "7";
 				type = <FREQ_FACTOR>;
 				ratio-table = <100>;
 			};
