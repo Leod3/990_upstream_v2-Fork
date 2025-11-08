@@ -120,16 +120,16 @@
 				core2 {
 					cpu = <&cpu2>;
 				};
+				core3 {
+					cpu = <&cpu3>;
+				};
 			};
 
 			cluster1 {
 				core0 {
-					cpu = <&cpu3>;
-				};
-				core1 {
 					cpu = <&cpu4>;
 				};
-				core2 {
+				core1 {
 					cpu = <&cpu5>;
 				};
 			};
@@ -401,34 +401,34 @@
 
 		energy-data {
 			ANANKE_ENERGY: ananke-energy {
-				mips-per-mhz = <270>;
-				power-coefficient = <120>;
-				mips-per-mhz-s = <184>;
-				power-coefficient-s = <106>;
-				static-power-coefficient = <39>;
+				mips-per-mhz = <320>;
+				power-coefficient = <100>;
+				mips-per-mhz-s = <220>;
+				power-coefficient-s = <90>;
+				static-power-coefficient = <35>;
 
-				efficiency-weight = <100>;
-				efficiency-weight-perf = <200>;
+				efficiency-weight = <250>;
+				efficiency-weight-perf = <150>;
 			};
 			ENYO_ENERGY: enyo-energy {
-				mips-per-mhz = <673>;
-				power-coefficient = <370>;
-				mips-per-mhz-s = <335>;
-				power-coefficient-s = <288>;
-				static-power-coefficient = <81>;
+				mips-per-mhz = <720>;
+				power-coefficient = <300>;
+				mips-per-mhz-s = <380>;
+				power-coefficient-s = <240>;
+				static-power-coefficient = <70>;
 
-				efficiency-weight = <200>;
-				efficiency-weight-perf = <200>;
+				efficiency-weight = <300>;
+				efficiency-weight-perf = <180>;
 			};
 			LION_ENERGY: lion-energy {
-				mips-per-mhz = <806>;
-				power-coefficient = <860>;
-				mips-per-mhz-s = <285>;
-				power-coefficient-s = <559>;
-				static-power-coefficient = <270>;
+				mips-per-mhz = <720>;
+				power-coefficient = <1200>;
+				mips-per-mhz-s = <240>;
+				power-coefficient-s = <800>;
+				static-power-coefficient = <350>;
 
-				efficiency-weight = <33>;
-				efficiency-weight-perf = <300>;
+				efficiency-weight = <20>;
+				efficiency-weight-perf = <180>;
 			};
 		};
 	};
@@ -470,14 +470,14 @@
 
 		domain@0 {
 			device_type = "ufc_domain";
-			shared-cpus = "0-2";
+			shared-cpus = "0-3";
 			table-idx = <3>;	/* index to ref ufc-table */
 			pm_qos-min-class = <3>;
 			pm_qos-max-class = <4>;
 		};
 		domain@1 {
 			device_type = "ufc_domain";
-			shared-cpus = "3-5";
+			shared-cpus = "4-5";
 			table-idx = <2>;	/* index to ref ufc-table */
 			pm_qos-min-class = <5>;
 			pm_qos-max-class = <6>;
@@ -495,6 +495,7 @@
 			sse-mode = <AARCH64_MODE>;
 			      /* Vfreq  big(1)  Med(2)  Lit(3)  Mode*/
 			table = <
+   	        	2730000	3316000	2800000	2300000 0
 				2730000	2730000	2600000	2002000 0
 				2623359	2626000	2600000	2002000 0
 				2519384	2522000	2600000	2002000 0
@@ -546,6 +547,7 @@
 			sse-mode = <AARCH32_MODE>;
 			      /* Vfreq    big      Lit  Mode */
 			table = <
+     	    	2730000	3316000	2800000	2300000 0
 				2730000	2730000	2600000	2002000 0
 				2623359	2626000	2600000	2002000 0
 				2519384	2522000	2600000	2002000 0
@@ -597,6 +599,7 @@
 			sse-mode = <AARCH64_MODE>;
 			      /* Vfreq    big      Lit    Mode*/
 			table = <
+	   	    	2730000	3316000	2800000	2300000 3
 				2730000	2730000	2600000	2002000 3
 				2623359	2626000	2600000	2002000 3
 				2519384	2522000	2600000	2002000 3
@@ -647,6 +650,7 @@
 			ctrl-type = <PM_QOS_MIN_LIMIT>;
 			sse-mode = <AARCH32_MODE>;
 			table = <
+                2730000 3316000	2800000 2300000 3
 				2730000	2730000	2600000	2002000 3
 				2623359	2626000	2600000	2002000 3
 				2519384	2626000	2600000	2002000 3
@@ -699,7 +703,7 @@
 
 		domain@0 {
 			device_type = "esgov-pol0";
-			shared-cpus = "0-2";
+			shared-cpus = "0-3";
 			pm_qos-min-class = <3>;
 			pm_qos-max-class = <4>;
 			step = <10>;
@@ -707,7 +711,7 @@
 		};
 		domain@1 {
 			device_type = "esgov-pol4";
-			shared-cpus = "3-5";
+			shared-cpus = "4-5";
 			pm_qos-min-class = <5>;
 			pm_qos-max-class = <6>;
 			step = <8>;
@@ -726,7 +730,7 @@
 	schedutil_gov {
 		schedutil_domain0: domain@0 {
 			device_type = "schedutil-domain";
-			shared-cpus = "0-2";
+			shared-cpus = "0-3";
 
 			enabled = <0>;          /* Disabled */
 			qos_min_class = <3>;
@@ -734,7 +738,7 @@
 
 		schedutil_domain1: domain@1 {
 			device_type = "schedutil-domain";
-			shared-cpus = "3-5";
+			shared-cpus = "4-5";
 
 			enabled = <1>;          /* Enabled */
 			expired_time = <80>;    /* 80ms */
@@ -745,11 +749,11 @@
 	cpufreq {
 		cpufreq_domain0: domain@0 {
 			device_type = "cpufreq-domain";
-			sibling-cpus = "0-2";
+			sibling-cpus = "0-3";
 			cal-id = <ACPM_DVFS_CPUCL0>;
 			dm-type = <DM_CPU_CL0>;
 
-			max-freq = <2002000>;
+			max-freq = <2300000>;
 			min-freq = <442000>;
 
 			/* PM QoS Class ID*/
@@ -768,7 +772,8 @@
 					dynamic-disable;
 
 						/* cpu      mif */
-					table = < 2106000 0
+					table = < 2300000
+                        2106000 0
 						2002000 0
 						1950000 0
 						1846000 0
@@ -796,11 +801,11 @@
 
 		cpufreq_domain1: domain@1 {
 			device_type = "cpufreq-domain";
-			sibling-cpus = "3-5";
+			sibling-cpus = "4-5";
 			cal-id = <ACPM_DVFS_CPUCL1>;
 			dm-type = <DM_CPU_CL1>;
 
-			max-freq = <2600000>;
+			max-freq = <2800000>;
 			min-freq = <507000>;
 
 			/* PM QoS Class ID*/
@@ -819,7 +824,8 @@
 					dynamic-disable;
 
 						/* cpu     mif */
-					table = < 2600000 2730000
+				 	table = < 2800000 2730000
+		     	        2600000 2730000
 						2504000 2730000
 						2400000 2535000
 						2314000 2535000
@@ -863,7 +869,7 @@
 			dm-type = <DM_CPU_CL2>;
 			need-awake;
 
-			max-freq = <2730000>;
+			max-freq = <3316000>;
 			min-freq = <546000>;
 
 			/* PM QoS Class ID*/
@@ -884,7 +890,8 @@
 					dynamic-disable;
 
 					/*  cpu     mif  */
-					table = < 3016000 2730000
+					table = < 3316000 2730000
+			     	    3016000 2730000
 						2834000 2730000
 						2730000 2730000
 						2626000 2730000
@@ -930,7 +937,7 @@
 		compatible = "samsung,exynos-hiu";
 		interrupts = <GIC_SPI INTREQ__CPUCL2_GCUIRQ IRQ_TYPE_LEVEL_HIGH>;
 		boost-threshold = <2002000>;
-		boost-max = <2730000>;
+		boost-max = <3316000>;
 		cal-id = <ACPM_DVFS_CPUCL2>;
 		sw-pbl = <0xff>;
 		bl1-inc = <0>;
@@ -968,8 +975,8 @@
 		compatible = "samsung,exynos-cpu-profiler";
 		status = "okay";
 
-		#define CPU_CL0 "0-2"
-		#define CPU_CL1 "3-5"
+		#define CPU_CL0 "0-3"
+		#define CPU_CL1 "4-5"
 		#define CPU_CL2 "6-7"
 
 		cpu_domain0: domain@0 {
@@ -1470,7 +1477,7 @@
 			target-residency = <10000>;
 			psci-index = <128>;
 			type = <POWERMODE_TYPE_CLUSTER>;
-			siblings = "0-2";
+			siblings = "0-3";
 		};
 
 		cpd_cl1 {
@@ -1478,8 +1485,8 @@
 			target-residency = <5000>;
 			psci-index = <128>;
 			type = <POWERMODE_TYPE_CLUSTER>;
-			siblings = "3-5";
-			entry-allowed = "3-5";
+			siblings = "4-5";
+			entry-allowed = "4-5";
 		};
 
 		cpd_cl2 {
@@ -1494,8 +1501,8 @@
 
 		vcpu_topology {
 			vcluster_cnt = <3>;
-			vcluster0_sibling = "0-2";
-			vcluster1_sibling = "3-5";
+			vcluster0_sibling = "0-3";
+			vcluster1_sibling = "4-5";
 			vcluster2_sibling = "6-7";
 		};
 
