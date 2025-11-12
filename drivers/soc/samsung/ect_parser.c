@@ -154,7 +154,7 @@ static int ect_parse_dvfs_domain(int parser_version, void *address, struct ect_d
             level_list = (u32 *)domain->list_level;
             for (j = 0; j < domain->num_of_level; j++) {
                 if (level_list[j] == 3016000) {
-                    level_list[j] = 4000000;
+                    level_list[j] = 2900000;
                     break;
                 }
             }
@@ -279,7 +279,7 @@ static int ect_parse_pll(int parser_version, void *address, struct ect_pll *ect_
         else if (strcmp(ect_pll->pll_name, "PLL_CPUCL2") == 0) {
             for (j = 0; j < ect_pll->num_of_frequency * 5; j += 5) {
                 if (freq_list[j] == 3016000000) {
-                    freq_list[j] = 4000000000;
+                    freq_list[j] = 2900000000;
                     freq_list[j+2] = 359;   // M
                     freq_list[j+4] = 45373; // K
                     break;
@@ -453,7 +453,7 @@ static int ect_parse_voltage_domain(int parser_version, void *address, struct ec
         } else if (strcmp(domain->domain_name, "CPUCL2") == 0) {
             for (j = 0; j < domain->num_of_level; j++) {
                 if (domain->level_list[j] == 3016) {
-                    domain->level_list[j] = 4000;
+                    domain->level_list[j] = 2900;
                     break;
                 }
             }
@@ -1002,7 +1002,7 @@ err_domain_list_allocation:
 	return ret;
 }
 
-#define GLOBAL_MHZ 4000
+#define GLOBAL_MHZ 2900
 #define GPU_MHZ 933
 
 static int ect_parse_gen_param_table(int parser_version, void *address, struct ect_gen_param_table *size)
