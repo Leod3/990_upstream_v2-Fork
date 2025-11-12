@@ -869,6 +869,115 @@ static ssize_t fv_tables_show(struct kobject *kobj, struct kobj_attribute *attr,
 static struct kobj_attribute fv_tables_attr =
 	__ATTR(fv_tables, 0400, fv_tables_show, NULL);
 
+/* Overclock interface */
+static ssize_t overclock_show(struct kobject *kobj, struct kobj_attribute *attr,
+			      char *buf)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	ssize_t count = 0;
+	int size, i;
+	struct vclk *vclk;
+	unsigned int max_freq, max_volt;
+
+	if (!sram_fvmap_base)
+		return snprintf(buf, PAGE_SIZE, "SRAM not mapped\n");
+
+	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
+	fvmap_header = sram_fvmap_base;
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "=== Overclock Configuration ===\n\n");
+
+	for (i = 0; i < size && count < PAGE_SIZE - 300; i++) {
+		vclk = cmucal_get_node(ACPM_VCLK_TYPE | i);
+		if (!vclk || fvmap_header[i].num_of_lv == 0)
+			continue;
+
+		fv_table = sram_fvmap_base + fvmap_header[i].o_ratevolt;
+		max_freq = fv_table->table[0].rate;
+		max_volt = fv_table->table[0].volt;
+
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "Domain %d: %s\n", i, vclk->name);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  Current Max: %u kHz @ %u uV\n",
+				  max_freq, max_volt);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  Levels: %d\n\n", fvmap_header[i].num_of_lv);
+	}
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "Usage: echo 'domain_id freq_khz volt_uv' > overclock\n");
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "Example: echo '2 3500000 1000000' > overclock\n");
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "  (Sets BIG cluster to 3.5 GHz @ 1.0V)\n");
+
+	return count;
+}
+
+static ssize_t overclock_store(struct kobject *kobj, struct kobj_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	int domain_id, new_freq, new_volt;
+	int ret, size;
+
+	if (!sram_fvmap_base) {
+		pr_err("SRAM not mapped\n");
+		return -ENOMEM;
+	}
+
+	ret = sscanf(buf, "%d %d %d", &domain_id, &new_freq, &new_volt);
+	if (ret != 3) {
+		pr_err("Invalid format. Use: domain_id freq_khz volt_uv\n");
+		return -EINVAL;
+	}
+
+	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
+	if (domain_id < 0 || domain_id >= size) {
+		pr_err("Invalid domain_id %d (valid range: 0-%d)\n", domain_id, size - 1);
+		return -EINVAL;
+	}
+
+	/* Safety checks */
+	if (new_freq < 100000 || new_freq > 5000000) {
+		pr_err("Frequency %d kHz out of safe range (100-5000 MHz)\n", new_freq);
+		return -EINVAL;
+	}
+
+	if (new_volt < 500000 || new_volt > 1300000) {
+		pr_err("Voltage %d uV out of safe range (500-1300 mV)\n", new_volt);
+		return -EINVAL;
+	}
+
+	fvmap_header = sram_fvmap_base;
+	fv_table = sram_fvmap_base + fvmap_header[domain_id].o_ratevolt;
+
+	/* Modify the first (highest) frequency level */
+	int old_freq = fv_table->table[0].rate;
+	int old_volt = fv_table->table[0].volt;
+
+	fv_table->table[0].rate = new_freq;
+	fv_table->table[0].volt = new_volt;
+
+	pr_info("Overclock applied: Domain %d\n", domain_id);
+	pr_info("  Frequency: %d kHz -> %d kHz (%+d kHz)\n",
+		old_freq, new_freq, new_freq - old_freq);
+	pr_info("  Voltage: %d uV -> %d uV (%+d uV)\n",
+		old_volt, new_volt, new_volt - old_volt);
+
+	pr_warn("WARNING: Overclocking can damage your hardware!\n");
+	pr_warn("Monitor temperatures and stability carefully.\n");
+
+	return count;
+}
+
+static struct kobj_attribute overclock_attr =
+	__ATTR(overclock, 0600, overclock_show, overclock_store);
+
 static struct attribute *sram_attrs[] = {
 	&sram_raw_attr.attr,
 	&sram_hex_attr.attr,
@@ -877,6 +986,7 @@ static struct attribute *sram_attrs[] = {
 	&sram_offset_attr.attr,
 	&undervolt_attr.attr,
 	&fv_tables_attr.attr,
+	&overclock_attr.attr,
 	NULL,
 };
 
