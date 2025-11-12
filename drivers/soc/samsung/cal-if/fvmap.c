@@ -1017,6 +1017,9 @@ static struct overclock_config permanent_oc[] = {
 	
 	/* Example: CPU LIT from 2106 MHz to 2300 MHz */
 	{ .domain_id = 2, .name = "CPUCL0", .new_freq_khz = 2304000, .new_volt_uv = 1087500, .enabled = 1 },
+
+	/* Example: CPU LIT from 3016 MHz to 2900 MHz */
+	{ .domain_id = 2, .name = "CPUCL2", .new_freq_khz = 2900000, .new_volt_uv = 1114750, .enabled = 1 },
 	
 	/* Add more entries as needed */
 };
