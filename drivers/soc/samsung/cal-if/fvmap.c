@@ -994,6 +994,81 @@ static const struct attribute_group sram_group = {
 	.attrs = sram_attrs,
 };
 
+/* Permanent overclock configuration - Edit these values */
+struct overclock_config {
+	int domain_id;
+	const char *name;
+	unsigned int new_freq_khz;
+	unsigned int new_volt_uv;
+	int enabled;
+};
+
+/* 
+ * Configure your permanent overclocks here.
+ * Set enabled = 1 to apply, 0 to disable.
+ * domain_id: Check with fv_tables to find the correct ID for your device
+ */
+static struct overclock_config permanent_oc[] = {
+	/* Example: GPU from 897 MHz to 933 MHz */
+	{ .domain_id = 10, .name = "GPU", .new_freq_khz = 933000, .new_volt_uv = 768000, .enabled = 1 },
+	
+	/* Example: CPU BIG from 3316 MHz to 3500 MHz */
+	{ .domain_id = 2, .name = "CPU_BIG", .new_freq_khz = 3500000, .new_volt_uv = 1100000, .enabled = 0 },
+	
+	/* Example: MIF from 2730 MHz to 3000 MHz */
+	{ .domain_id = 0, .name = "MIF", .new_freq_khz = 3000000, .new_volt_uv = 1000000, .enabled = 0 },
+	
+	/* Add more entries as needed */
+};
+
+static void apply_permanent_overclock(void __iomem *sram_base)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	int i, num_configs;
+
+	if (!sram_base) {
+		pr_err("fvmap: Cannot apply permanent OC - SRAM not mapped\n");
+		return;
+	}
+
+	fvmap_header = sram_base;
+	num_configs = ARRAY_SIZE(permanent_oc);
+
+	pr_info("fvmap: Applying permanent overclock configuration...\n");
+
+	for (i = 0; i < num_configs; i++) {
+		if (!permanent_oc[i].enabled)
+			continue;
+
+		if (permanent_oc[i].domain_id < 0 || 
+		    permanent_oc[i].domain_id >= cmucal_get_list_size(ACPM_VCLK_TYPE)) {
+			pr_err("fvmap: Invalid domain_id %d for %s\n",
+			       permanent_oc[i].domain_id, permanent_oc[i].name);
+			continue;
+		}
+
+		fv_table = sram_base + fvmap_header[permanent_oc[i].domain_id].o_ratevolt;
+
+		/* Modify the first (highest) frequency level */
+		unsigned int old_freq = fv_table->table[0].rate;
+		unsigned int old_volt = fv_table->table[0].volt;
+
+		fv_table->table[0].rate = permanent_oc[i].new_freq_khz;
+		fv_table->table[0].volt = permanent_oc[i].new_volt_uv;
+
+		pr_info("fvmap: [%s] Permanent OC applied:\n", permanent_oc[i].name);
+		pr_info("  Frequency: %u kHz -> %u kHz (%+d kHz)\n",
+			old_freq, permanent_oc[i].new_freq_khz,
+			permanent_oc[i].new_freq_khz - old_freq);
+		pr_info("  Voltage: %u uV -> %u uV (%+d uV)\n",
+			old_volt, permanent_oc[i].new_volt_uv,
+			permanent_oc[i].new_volt_uv - old_volt);
+	}
+
+	pr_info("fvmap: Permanent overclock configuration complete.\n");
+}
+
 static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base)
 {
 	volatile struct fvmap_header *fvmap_header, *header;
@@ -1094,6 +1169,10 @@ int fvmap_init(void __iomem *sram_base)
 	fvmap_base = map_base;
 	sram_fvmap_base = sram_base;
 	pr_info("%s:fvmap initialize %p\n", __func__, sram_base);
+	
+	/* Apply permanent overclock BEFORE copying to map_base */
+	apply_permanent_overclock(sram_base);
+	
 	fvmap_copy_from_sram(map_base, sram_base);
 
 	/* percent margin for each doamin at runtime */
