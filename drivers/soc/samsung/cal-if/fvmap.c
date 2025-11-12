@@ -579,6 +579,311 @@ static const struct attribute_group asv_g_spec_grp = {
 #endif
 #endif /* CONFIG_SEC_FACTORY */
 
+/* SRAM sysfs interface */
+static ssize_t sram_raw_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	if (!sram_fvmap_base)
+		return snprintf(buf, PAGE_SIZE, "SRAM not mapped\n");
+
+	/* Copy SRAM content to buffer (limited to PAGE_SIZE) */
+	memcpy_fromio(buf, sram_fvmap_base, min_t(size_t, FVMAP_SIZE, PAGE_SIZE));
+
+	return min_t(size_t, FVMAP_SIZE, PAGE_SIZE);
+}
+
+static ssize_t sram_raw_store(struct kobject *kobj, struct kobj_attribute *attr,
+			      const char *buf, size_t count)
+{
+	if (!sram_fvmap_base) {
+		pr_err("SRAM not mapped\n");
+		return -ENOMEM;
+	}
+
+	/* Limit write to SRAM size */
+	if (count > FVMAP_SIZE)
+		count = FVMAP_SIZE;
+
+	memcpy_toio(sram_fvmap_base, buf, count);
+	pr_info("fvmap: %zu bytes written to SRAM\n", count);
+
+	return count;
+}
+
+static ssize_t sram_hex_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	ssize_t count = 0;
+	int i, num_words;
+
+	if (!sram_fvmap_base)
+		return snprintf(buf, PAGE_SIZE, "SRAM not mapped\n");
+
+	/* Show first 64 words (256 bytes) in hex format */
+	num_words = min_t(int, 64, FVMAP_SIZE / 4);
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "SRAM Dump (first %d words):\n", num_words);
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "Offset    | Hex Value\n");
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "----------+-----------\n");
+
+	for (i = 0; i < num_words && count < PAGE_SIZE - 50; i++) {
+		u32 value = ioread32(sram_fvmap_base + (i * 4));
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "0x%04x    | 0x%08x\n", i * 4, value);
+	}
+
+	return count;
+}
+
+static ssize_t sram_size_show(struct kobject *kobj, struct kobj_attribute *attr,
+			      char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", FVMAP_SIZE);
+}
+
+static ssize_t sram_addr_show(struct kobject *kobj, struct kobj_attribute *attr,
+			      char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "virtual: %p\n", sram_fvmap_base);
+}
+
+static ssize_t sram_offset_show(struct kobject *kobj, struct kobj_attribute *attr,
+				char *buf)
+{
+	return snprintf(buf, PAGE_SIZE,
+			"Usage: echo 'offset value' > sram_offset\n"
+			"Example: echo '0x100 0x12345678' > sram_offset\n");
+}
+
+static ssize_t sram_offset_store(struct kobject *kobj, struct kobj_attribute *attr,
+				 const char *buf, size_t count)
+{
+	unsigned int offset, value;
+	int ret;
+
+	if (!sram_fvmap_base) {
+		pr_err("SRAM not mapped\n");
+		return -ENOMEM;
+	}
+
+	ret = sscanf(buf, "%x %x", &offset, &value);
+	if (ret != 2) {
+		pr_err("Invalid format. Use: offset(hex) value(hex)\n");
+		return -EINVAL;
+	}
+
+	if (offset >= FVMAP_SIZE) {
+		pr_err("Offset 0x%x out of range (max: 0x%x)\n", offset, FVMAP_SIZE);
+		return -EINVAL;
+	}
+
+	iowrite32(value, sram_fvmap_base + offset);
+	pr_info("fvmap: Written 0x%08x to offset 0x%04x\n", value, offset);
+
+	return count;
+}
+
+static struct kobj_attribute sram_raw_attr =
+	__ATTR(sram_raw, 0600, sram_raw_show, sram_raw_store);
+
+static struct kobj_attribute sram_hex_attr =
+	__ATTR(sram_hex, 0400, sram_hex_show, NULL);
+
+static struct kobj_attribute sram_size_attr =
+	__ATTR(sram_size, 0400, sram_size_show, NULL);
+
+static struct kobj_attribute sram_addr_attr =
+	__ATTR(sram_addr, 0400, sram_addr_show, NULL);
+
+static struct kobj_attribute sram_offset_attr =
+	__ATTR(sram_offset, 0600, sram_offset_show, sram_offset_store);
+
+/* Undervolt interface */
+static ssize_t undervolt_show(struct kobject *kobj, struct kobj_attribute *attr,
+			      char *buf)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	ssize_t count = 0;
+	int size, i, j;
+	struct vclk *vclk;
+
+	if (!sram_fvmap_base)
+		return snprintf(buf, PAGE_SIZE, "SRAM not mapped\n");
+
+	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
+	fvmap_header = sram_fvmap_base;
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "Domain ID | Domain Name     | Levels | Current Voltages (uV)\n");
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "----------+-----------------+--------+----------------------\n");
+
+	for (i = 0; i < size && count < PAGE_SIZE - 200; i++) {
+		vclk = cmucal_get_node(ACPM_VCLK_TYPE | i);
+		if (!vclk)
+			continue;
+
+		fv_table = sram_fvmap_base + fvmap_header[i].o_ratevolt;
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "%-9d | %-15s | %-6d |",
+				  i, vclk->name, fvmap_header[i].num_of_lv);
+
+		/* Show first 3 voltage levels */
+		for (j = 0; j < min_t(int, 3, fvmap_header[i].num_of_lv); j++) {
+			count += snprintf(buf + count, PAGE_SIZE - count,
+					  " %d", fv_table->table[j].volt);
+		}
+		if (fvmap_header[i].num_of_lv > 3)
+			count += snprintf(buf + count, PAGE_SIZE - count, " ...");
+
+		count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+	}
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "\nUsage: echo 'domain_id offset_uV' > undervolt\n");
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "Example: echo '0 -50000' > undervolt (reduce 50mV on domain 0)\n");
+
+	return count;
+}
+
+static ssize_t undervolt_store(struct kobject *kobj, struct kobj_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	int domain_id, offset_uv;
+	int ret, i, size;
+
+	if (!sram_fvmap_base) {
+		pr_err("SRAM not mapped\n");
+		return -ENOMEM;
+	}
+
+	ret = sscanf(buf, "%d %d", &domain_id, &offset_uv);
+	if (ret != 2) {
+		pr_err("Invalid format. Use: domain_id offset_uV\n");
+		return -EINVAL;
+	}
+
+	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
+	if (domain_id < 0 || domain_id >= size) {
+		pr_err("Invalid domain_id %d (valid range: 0-%d)\n", domain_id, size - 1);
+		return -EINVAL;
+	}
+
+	/* Safety check: limit undervolt to -200mV */
+	if (offset_uv < -200000) {
+		pr_err("Undervolt offset too aggressive: %d uV (min: -200000 uV)\n", offset_uv);
+		return -EINVAL;
+	}
+
+	/* Safety check: limit overvolt to +100mV */
+	if (offset_uv > 100000) {
+		pr_err("Overvolt offset too high: %d uV (max: +100000 uV)\n", offset_uv);
+		return -EINVAL;
+	}
+
+	fvmap_header = sram_fvmap_base;
+	fv_table = sram_fvmap_base + fvmap_header[domain_id].o_ratevolt;
+
+	/* Apply offset to all voltage levels in the domain */
+	for (i = 0; i < fvmap_header[domain_id].num_of_lv; i++) {
+		int old_volt = fv_table->table[i].volt;
+		int new_volt = old_volt + offset_uv;
+
+		/* Ensure voltage doesn't go below 400mV */
+		if (new_volt < 400000) {
+			pr_warn("Voltage would be too low (%d uV), clamping to 400000 uV\n", new_volt);
+			new_volt = 400000;
+		}
+
+		fv_table->table[i].volt = new_volt;
+		pr_info("Domain %d Level %d: %d uV -> %d uV (%+d uV)\n",
+			domain_id, i, old_volt, new_volt, offset_uv);
+	}
+
+	pr_info("Undervolt applied: domain %d, offset %+d uV\n", domain_id, offset_uv);
+
+	return count;
+}
+
+static struct kobj_attribute undervolt_attr =
+	__ATTR(undervolt, 0600, undervolt_show, undervolt_store);
+
+/* Frequency/Voltage tables display */
+static ssize_t fv_tables_show(struct kobject *kobj, struct kobj_attribute *attr,
+			      char *buf)
+{
+	struct fvmap_header *fvmap_header;
+	struct rate_volt_header *fv_table;
+	ssize_t count = 0;
+	int size, i, j;
+	struct vclk *vclk;
+
+	if (!sram_fvmap_base)
+		return snprintf(buf, PAGE_SIZE, "SRAM not mapped\n");
+
+	size = cmucal_get_list_size(ACPM_VCLK_TYPE);
+	fvmap_header = sram_fvmap_base;
+
+	count += snprintf(buf + count, PAGE_SIZE - count,
+			  "=== DVFS Frequency/Voltage Tables ===\n\n");
+
+	for (i = 0; i < size && count < PAGE_SIZE - 500; i++) {
+		vclk = cmucal_get_node(ACPM_VCLK_TYPE | i);
+		if (!vclk || fvmap_header[i].num_of_lv == 0)
+			continue;
+
+		fv_table = sram_fvmap_base + fvmap_header[i].o_ratevolt;
+
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "Domain %d: %s\n", i, vclk->name);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  DVFS Type: %d\n", fvmap_header[i].dvfs_type);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  Levels: %d\n", fvmap_header[i].num_of_lv);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  %-5s | %-12s | %-10s\n", "Level", "Freq (kHz)", "Volt (uV)");
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				  "  ------+--------------+-----------\n");
+
+		for (j = 0; j < fvmap_header[i].num_of_lv && count < PAGE_SIZE - 200; j++) {
+			count += snprintf(buf + count, PAGE_SIZE - count,
+					  "  %-5d | %-12u | %-10u\n",
+					  j,
+					  fv_table->table[j].rate,
+					  fv_table->table[j].volt);
+		}
+
+		count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+	}
+
+	return count;
+}
+
+static struct kobj_attribute fv_tables_attr =
+	__ATTR(fv_tables, 0400, fv_tables_show, NULL);
+
+static struct attribute *sram_attrs[] = {
+	&sram_raw_attr.attr,
+	&sram_hex_attr.attr,
+	&sram_size_attr.attr,
+	&sram_addr_attr.attr,
+	&sram_offset_attr.attr,
+	&undervolt_attr.attr,
+	&fv_tables_attr.attr,
+	NULL,
+};
+
+static const struct attribute_group sram_group = {
+	.attrs = sram_attrs,
+};
+
 static void fvmap_copy_from_sram(void __iomem *map_base, void __iomem *sram_base)
 {
 	volatile struct fvmap_header *fvmap_header, *header;
@@ -688,6 +993,15 @@ int fvmap_init(void __iomem *sram_base)
 
 	if (sysfs_create_group(kobj, &percent_margin_group))
 		pr_err("Fail to create percent_margin group\n");
+
+	/* SRAM exposure via sysfs */
+	kobj = kobject_create_and_add("fvmap_sram", power_kobj);
+	if (!kobj)
+		pr_err("Fail to create fvmap_sram kobject\n");
+	else if (sysfs_create_group(kobj, &sram_group))
+		pr_err("Fail to create sram group\n");
+	else
+		pr_info("fvmap: SRAM exposed via sysfs at /sys/power/fvmap_sram/\n");
 
 #ifdef CONFIG_SEC_FACTORY
 #ifdef CONFIG_SOC_EXYNOS9830
