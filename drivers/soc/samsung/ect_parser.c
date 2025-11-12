@@ -453,7 +453,7 @@ static int ect_parse_voltage_domain(int parser_version, void *address, struct ec
         } else if (strcmp(domain->domain_name, "CPUCL2") == 0) {
             for (j = 0; j < domain->num_of_level; j++) {
                 if (domain->level_list[j] == 3016) {
-                    domain->level_list[j] = 3016;
+                    domain->level_list[j] = 4000;
                     break;
                 }
             }
@@ -704,7 +704,7 @@ static int ect_parse_ap_thermal_function(int parser_version, void *address, stru
         if (strcmp(function->function_name, "LITTLE") == 0) {
             for (j = 0; j < function->num_of_range; j++) {
                 range = &function->range_list[j];
-                range->max_frequency = 2106000; // 2106 MHz in kHz
+                range->max_frequency = 2300000; // 2106 MHz in kHz
             }
         }
     }
