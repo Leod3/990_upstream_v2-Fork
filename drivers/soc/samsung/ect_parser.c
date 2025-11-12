@@ -138,7 +138,7 @@ static int ect_parse_dvfs_domain(int parser_version, void *address, struct ect_d
             level_list = (u32 *)domain->list_level;
             for (j = 0; j < domain->num_of_level; j++) {
                 if (level_list[j] == 2106000) {
-                    level_list[j] = 2300000;
+                    level_list[j] = 2304000;
                     break;
                 }
             }
@@ -146,7 +146,7 @@ static int ect_parse_dvfs_domain(int parser_version, void *address, struct ect_d
             level_list = (u32 *)domain->list_level;
             for (j = 0; j < domain->num_of_level; j++) {
                 if (level_list[j] == 2600000) {
-                    level_list[j] = 3016000;
+                    level_list[j] = 2803000;
                     break;
                 }
             }
@@ -259,7 +259,7 @@ static int ect_parse_pll(int parser_version, void *address, struct ect_pll *ect_
         if (strcmp(ect_pll->pll_name, "PLL_CPUCL0") == 0) {
             for (j = 0; j < ect_pll->num_of_frequency * 5; j += 5) {
                 if (freq_list[j] == 2106000000) {
-                    freq_list[j] = 2300000000;
+                    freq_list[j] = 2304000000;
                     freq_list[j+2] = 255; // M
                     freq_list[j+4] = 0;   // K
                     break;
@@ -269,7 +269,7 @@ static int ect_parse_pll(int parser_version, void *address, struct ect_pll *ect_
         else if (strcmp(ect_pll->pll_name, "PLL_CPUCL1") == 0) {
             for (j = 0; j < ect_pll->num_of_frequency * 5; j += 5) {
                 if (freq_list[j] == 2600000000) {
-                    freq_list[j] = 3016000000;
+                    freq_list[j] = 2803000000;
                     freq_list[j+2] = 315; // M
                     freq_list[j+4] = 0;   // K
                     break;
@@ -439,14 +439,14 @@ static int ect_parse_voltage_domain(int parser_version, void *address, struct ec
         if (strcmp(domain->domain_name, "CPUCL0") == 0) {
             for (j = 0; j < domain->num_of_level; j++) {
                 if (domain->level_list[j] == 2106) {
-                    domain->level_list[j] = 2300;
+                    domain->level_list[j] = 2304;
                     break;
                 }
             }
         } else if (strcmp(domain->domain_name, "CPUCL1") == 0) {
             for (j = 0; j < domain->num_of_level; j++) {
                 if (domain->level_list[j] == 2600) {
-                    domain->level_list[j] = 3016;
+                    domain->level_list[j] = 2803;
                     break;
                 }
             }
@@ -704,7 +704,7 @@ static int ect_parse_ap_thermal_function(int parser_version, void *address, stru
         if (strcmp(function->function_name, "LITTLE") == 0) {
             for (j = 0; j < function->num_of_range; j++) {
                 range = &function->range_list[j];
-                range->max_frequency = 2300000; // 2106 MHz in kHz
+                range->max_frequency = 2304000; // 2106 MHz in kHz
             }
         }
     }
