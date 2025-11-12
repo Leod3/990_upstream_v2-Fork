@@ -1577,7 +1577,7 @@ __setup("mif_min=", cpufreq_read_mif_min);
 
 
 /*Overclocking little cores to 1846 MHz*/
-unsigned long arg_cpu_max_c1 = 2300000;
+unsigned long arg_cpu_max_c1 = 2304000;
 
 static int __init cpufreq_read_cpu_max_c1(char *cpu_max_c1) /*integer remains in memory after function call*/
 {
@@ -1595,7 +1595,7 @@ static int __init cpufreq_read_cpu_max_c1(char *cpu_max_c1) /*integer remains in
 __setup("cpu_max_c1=", cpufreq_read_cpu_max_c1);
 
 /*Overclocking perf cores to 1898 MHz*/
-unsigned long arg_cpu_max_c2 = 3016000;
+unsigned long arg_cpu_max_c2 = 2803000;
 
 static __init int cpufreq_read_cpu_max_c2(char *cpu_max_c2)
 {
